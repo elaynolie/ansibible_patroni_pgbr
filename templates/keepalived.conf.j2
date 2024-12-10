@@ -1,0 +1,27 @@
+global_defs {
+    router_id {{ router_id }}
+    max_auto_priority 0
+}
+
+vrrp_script haproxy_check {
+    script "/etc/keepalived/haproxy_check.sh"
+    weight 2
+    fall 2
+    rise 2
+}
+
+vrrp_instance VRRP {
+    state {{ 'MASTER' if inventory_hostname == master_host else 'BACKUP' }}
+    interface {{ interface }}
+    virtual_router_id 50
+    priority {{ 150 if inventory_hostname == master_host else 100 }}
+    advert_int 1
+
+    virtual_ipaddress {
+        {{ virtual_ip }}
+    }
+
+    track_script {
+        haproxy_check
+    }
+}

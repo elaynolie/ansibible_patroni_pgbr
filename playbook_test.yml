@@ -1,0 +1,99 @@
+---
+- name: Install and Configure HAProxy, Keepalived, etcd, pgBackRest, and Patroni
+  hosts: all
+  become: true
+  vars:
+    router_id: "clu-n1"
+    interface: "ens192"
+    virtual_ip: "10.77.15.130"
+    vrrp_state: "MASTER"
+    priotrity: 100
+    master_host: "db01"
+    haproxy_servers:
+      - { name: db01, address: clu-01}
+      - { name: db02, address: clu-02}
+      - { name: db03, address: clu-03}
+
+  tasks:
+    - name: Install HAProxy
+      apt:
+        name: haproxy
+        state: present
+      when: ansible_os_family == "Debian"
+      notify:
+        - Restart HAProxy
+    
+    - name: Deploy configuration file Haproxy to destination host
+      template:
+        src: templates/haproxy.cfg.j2
+        dest: /etc/haproxy/haproxy.cfg
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart HAProxy
+
+    - name: Install Keepalived
+      apt:
+        name: keepalived
+        state: present
+      when: ansible_os_family == "Debian"
+      notify:
+        - Restart Keepalived
+
+    - name: Copy haproxy script for keepalived to destination folder
+      copy:
+        src: files/haproxy_check.sh
+        dest: /etc/keepalived/haproxy_check.sh
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Configure keepalived
+      template:
+        src: keepalived.conf.j2
+        dest: /etc/keepalived/keepalived.conf
+        owner: root
+        group: root
+        mode: '0644'
+      notify:
+        - Restart Keepalived
+
+    - name: Install etcd
+      apt:
+        name: etcd
+        state: present
+      when: ansible_os_family == "Debian"
+      notify: 
+        - Restart etcd
+
+    - name: Install pgBackRest
+      apt:
+        name: pgbackrest
+        state: present
+      when: ansible_os_family == "Debian"
+
+    - name: Install Patroni
+      apt:
+        name: patroni
+        state: present
+      when: ansible_os_family == "Debian"
+
+  handlers:
+    - name: Restart HAProxy
+      service:
+        name: haproxy
+        state: restarted
+        enabled: true
+
+    - name: Restart Keepalived
+      service:
+        name: keepalived
+        state: restarted
+        enabled: true
+
+    - name: Restart etcd
+      service:
+        name: etcd
+        state: restarted
+        enabled: true

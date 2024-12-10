@@ -1,0 +1,9 @@
+all:
+  hosts:
+    db01:
+      ansible_host: 127.0.0.1
+  children:
+    db_group:
+      hosts:
+        db01:
+
